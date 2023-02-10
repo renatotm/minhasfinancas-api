@@ -3,6 +3,7 @@ package br.com.cnaga.minhasfinancas.service.impl;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Example;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import br.com.cnaga.minhasfinancas.exception.RegraNegocioException;
 import br.com.cnaga.minhasfinancas.model.entity.Lancamento;
 import br.com.cnaga.minhasfinancas.model.enums.StatusLancamento;
+import br.com.cnaga.minhasfinancas.model.enums.TipoLancamento;
 import br.com.cnaga.minhasfinancas.model.repository.LancamentoRepository;
 import br.com.cnaga.minhasfinancas.service.LancamentoService;
 
@@ -27,6 +29,7 @@ public class LancamentoServiceImpl implements LancamentoService{
 	@Transactional
 	public Lancamento salvar(Lancamento lancamento) {
 		validar(lancamento);
+		lancamento.setStatus(StatusLancamento.PENDENTE);
 		return repository.save(lancamento);
 	}
 
@@ -71,7 +74,7 @@ public class LancamentoServiceImpl implements LancamentoService{
 			throw new RegraNegocioException("Informe um mês válido.");
 		}
 		
-		if(lancamento.getAno() == null || lancamento.getAno() < 1 || lancamento.getAno() > 12 ) {
+		if(lancamento.getAno() == null || lancamento.getAno().toString().length() != 4 ) {
 			throw new RegraNegocioException("Informe um Ano válido.");
 		}
 		
@@ -86,6 +89,28 @@ public class LancamentoServiceImpl implements LancamentoService{
 		if(lancamento.getTipo() == null ) {
 			throw new RegraNegocioException("Informe um tipo de lançamento.");
 		}		
+	}
+
+	@Override
+	public Optional<Lancamento> obterPorId(Long id) {
+		return repository.findById(id);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public BigDecimal obterSaldoPorUsuario(Long id) {
+		BigDecimal receitas =  repository.obterSaldoPorTipoLancamentoEUsuario(id, TipoLancamento.RECEITA);
+		BigDecimal despesas =  repository.obterSaldoPorTipoLancamentoEUsuario(id, TipoLancamento.DESPESA);
+		
+		if(receitas == null) {
+			receitas = BigDecimal.ZERO;
+		}
+		
+		if(despesas == null) {
+			despesas = BigDecimal.ZERO;
+		}
+		
+		return receitas.subtract(despesas);
 	}
 
 }
